@@ -32,7 +32,7 @@ Ensure you have a folder named letter_templates in the same directory as the scr
 
 Inside this folder, you can create birthday letter templates named as you like (e.g., letter1.txt, letter2.txt, etc.), and use [NAME] as a placeholder for the recipient's name.
 
-## Run the script using a Python interpreter:
+## Run the script using a Python interpreter or any Python IDE:
 
 CODE:
 _python birthday_email.py_
