@@ -4,12 +4,12 @@ import csv  # Reading file using csv module directly is more efficient than usin
 from random import choice
 import smtplib
 
-MY_EMAIL = "learnwithpandeynikky@gmail.com"
+MY_EMAIL = "learnwithpandeynikky@gmail.com" 
 MY_PASSWORD = "phbkxvbtxgenipbl"
 now = datetime.now()
 today_tuple = (now.month, now.day)
 
-with smtplib.SMTP("smtp.gmail.com") as connection:
+with smtplib.SMTP("smtp.gmail.com") as connection:  # Instead of gmail , other mailing services like yahoo etc can also be used.
     connection.starttls()
     connection.login(MY_EMAIL, MY_PASSWORD)
 
