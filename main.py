@@ -1,40 +1,97 @@
 from datetime import datetime
-from pathlib import Path  # Using pathlib is more preferred than using os module
-import csv  # Reading file using csv module directly is more efficient than using pandas dataframes
-from random import choice
+from pathlib import Path
+import csv
 import smtplib
+from random import choice
+from dotenv import load_dotenv
+import os
 
-MY_EMAIL = "learnwithpandeynikky@gmail.com" 
-MY_PASSWORD = "phbkxvbtxgenipbl"
-now = datetime.now()
-today_tuple = (now.month, now.day)
+# Load environment variables from .env file
+load_dotenv()
 
-with smtplib.SMTP("smtp.gmail.com") as connection:  # Instead of gmail , other mailing services like yahoo etc can also be used.
-    connection.starttls()
-    connection.login(MY_EMAIL, MY_PASSWORD)
+# Constants and credentials
+MY_EMAIL = os.getenv("EMAIL")
+MY_PASSWORD = os.getenv("PASSWORD")
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+BIRTHDAY_FILE = "birthdays.csv"
+TEMPLATE_FOLDER = "letter_templates"
+EMAIL_SUBJECT = "Subject:Happy Birthday!\n\n"
 
-    with open("birthdays.csv", "r") as birthday_file:
-        csv_file = csv.reader(birthday_file)
-        next(csv_file)  # It skips the header line so that month and day can be converted to int without string error
-        for line in csv_file:
-            try:
-                name, email, year, month, day = line
-                date_in_file = (int(month), int(day))
+def get_today_date_tuple():
+    """Returns today's (month, day) as a tuple."""
+    today = datetime.now()
+    return today.month, today.day
 
-                if today_tuple == date_in_file:
-                    folder_name = "letter_templates"
-                    folder_path = Path(__file__).parent / folder_name
-                    letter_list = list(folder_path.glob("*"))
-                    wish_file = choice(letter_list)
-                    file_path = Path(folder_path, wish_file)
-                    with open(file_path, "r") as selected_wish:
-                        file_contents = selected_wish.read()
-                        final_file = file_contents.replace("[NAME]", name)
+def load_birthdays(file_path):
+    """Loads birthday records from a CSV file."""
+    birthdays = []
+    try:
+        with open(file_path, mode="r", newline="") as file:
+            reader = csv.reader(file)
+            next(reader)  # Skip header
+            for row in reader:
+                if len(row) != 5:
+                    print(f"Skipping malformed row: {row}")
+                    continue
+                name, email, year, month, day = row
+                birthdays.append({
+                    "name": name.strip(),
+                    "email": email.strip(),
+                    "date": (int(month), int(day))
+                })
+    except Exception as e:
+        print(f"Error reading birthday file: {e}")
+    return birthdays
 
-                    connection.sendmail(
-                        from_addr=MY_EMAIL,
-                        to_addrs=email,
-                        msg=f"Subject:Happy Birthday!\n\n{final_file}")
+def pick_random_template(folder):
+    """Randomly selects a letter template file."""
+    try:
+        templates = list(Path(folder).glob("*.txt"))
+        return choice(templates) if templates else None
+    except Exception as e:
+        print(f"Error selecting template: {e}")
+        return None
 
-            except ValueError as e:
-                print(f"Error Message : {str(e)}")
+def personalize_template(template_path, name):
+    """Replaces [NAME] placeholder with the actual name."""
+    try:
+        with open(template_path, "r") as file:
+            content = file.read()
+            return content.replace("[NAME]", name)
+    except Exception as e:
+        print(f"Error reading template: {e}")
+        return ""
+
+def send_email(recipient_email, message_body):
+    """Sends the email using SMTP."""
+    if not MY_EMAIL or not MY_PASSWORD:
+        raise EnvironmentError("EMAIL or PASSWORD not set in .env")
+
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as connection:
+            connection.starttls()
+            connection.login(MY_EMAIL, MY_PASSWORD)
+            connection.sendmail(
+                from_addr=MY_EMAIL,
+                to_addrs=recipient_email,
+                msg=EMAIL_SUBJECT + message_body
+            )
+        print(f"Email sent to {recipient_email}")
+    except Exception as e:
+        print(f"Failed to send email to {recipient_email}: {e}")
+
+def main():
+    today = get_today_date_tuple()
+    birthdays = load_birthdays(BIRTHDAY_FILE)
+
+    for entry in birthdays:
+        if entry["date"] == today:
+            template = pick_random_template(TEMPLATE_FOLDER)
+            if template:
+                message = personalize_template(template, entry["name"])
+                if message:
+                    send_email(entry["email"], message)
+
+if __name__ == "__main__":
+    main()
